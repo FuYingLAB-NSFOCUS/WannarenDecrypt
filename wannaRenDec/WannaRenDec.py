@@ -1,15 +1,21 @@
-# Write by FuYing Lab@NSFOCUS
-# @link https://github.com/FuYingLAB-NSFOCUS/WannarenDecrypt/
-# Decrypt key @link http://bbs.huorong.cn/thread-68350-1-1.html
 import os,sys
 import rsa
 import rc4
 
 
-def WANNA_decrypt(orifile,privkey):
+def WANNA_decrypt(orifile,privkey, out):
     if os.path.exists(orifile) is False:
         return
-    newfile = orifile + ".ns.decrypt"
+    newfile =  os.path.join(out,os.path.basename(orifile))
+    if newfile.endswith('.WannaRen'):
+        newfile = newfile[:-9]
+
+    #for big file hang
+    with open(orifile, 'rb') as enc_file:
+        enc = enc_file.read(11)
+        if enc != 'WannaRenkey':
+            return
+
     with open(orifile, 'rb') as enc_file:
         enc = enc_file.read()
     p1 = enc.find('WannaRenkey')
@@ -22,8 +28,8 @@ def WANNA_decrypt(orifile,privkey):
         return
     print "decrypting %s"%(orifile)
     #rc4 key
-    rc4_key = rsa.decrypt(enc[11:267], privkey).decode()  
-    
+    rc4_key = rsa.decrypt(enc[11:267], privkey).decode()
+
     #rc4 decrypt
     #WannaRen1{data}WannaRen2
     data = enc[p2+9:-9]
@@ -33,31 +39,44 @@ def WANNA_decrypt(orifile,privkey):
     #WannaRena{filedata}WannaRenb
     if res.find("WannaRena")<0 or res.find("WannaRenb") < 0:
         print "decrypt %s failed."%(orifile)
+
     with open(newfile,'wb') as n:
         n.write(res[9:-9])
     print "decrypt %s to %s"%(orifile, newfile)
 
-def traveldir(path,key):
+def traveldir(path,key, out):
     if os.path.exists(path) is False:
         return
     if os.path.isfile(path):
-        WANNA_decrypt(path,key)
+        WANNA_decrypt(path,key, out)
         return
-    dirs =  os.listdir(path)
+
+    #no permission
+    try:
+        dirs =  os.listdir(path)
+    except Exception as e:
+        print "check dir %s, Error: %s"%(path, e)
+        return
+
     for file in dirs:
         file = os.path.join(path,file)
-        if os.path.isdir(file):
-            traveldir(file, key)
-        else:
-            WANNA_decrypt(file, key)
-        
+        try:
+            if os.path.isdir(file):
+                print "check dir %s"%(file)
+                traveldir(file, key, out)
+            else:
+                WANNA_decrypt(file, key, out)
+        except Exception as e:
+            print "check %s. Error:%s"%(file, e)
 
-def main(key,path):
+
+def main(key,path, out):
     with open(key, 'rb') as privatefile:
         p = privatefile.read()
     privkey = rsa.PrivateKey.load_pkcs1(p)
 
-    traveldir(path, privkey)
+    traveldir(path, privkey, out)
+    print "check dir %s end"%(path)
 
 
 if __name__ == "__main__":
@@ -67,6 +86,12 @@ if __name__ == "__main__":
 
     path = sys.argv[1]
     key = "./key"
+    out = "./decrypt_out"
     key = os.path.realpath(key)
-    main(key, path)
-    
+    path = os.path.realpath(path)
+    out = os.path.realpath(out)
+    if os.path.exists(out) is False:
+        os.makedirs(out)
+
+    main(key, path, out)
+    print "Output path: %s"%(out)
