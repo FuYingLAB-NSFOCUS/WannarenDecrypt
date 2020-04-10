@@ -1,3 +1,6 @@
+# Write by FuYing Lab@NSFOCUS
+# @link https://github.com/FuYingLAB-NSFOCUS/WannarenDecrypt/
+# Decrypt key @link http://bbs.huorong.cn/thread-68350-1-1.html
 import os,sys
 import rsa
 import rc4
